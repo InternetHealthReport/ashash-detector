@@ -1,0 +1,16 @@
+analyser:
+  asns: all
+  dist_threshold: 3
+  figure_address: ./results/figures/
+  min_anomalies: 0
+  mode: null
+  noise_sd_default: 0.02
+  save_address: ./results/
+  tolerance: 5
+writer:
+  asns: null
+  end: null
+  mode: null
+  range: A2:E5
+  save_address: ./data/
+  time_window: 14
