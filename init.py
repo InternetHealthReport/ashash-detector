@@ -2,6 +2,10 @@ import yaml
 import argparse
 
 parser = argparse.ArgumentParser()
+clear = False
+
+parser.add_argument("-c", action='store_true', default=False, dest="clear",
+                    help='clear config file')
 
 parser.add_argument("-wm", help="mode for writer list/dates")
 parser.add_argument("-wr", help="range for list", default="A2:E5")
@@ -21,25 +25,57 @@ parser.add_argument("-ad", help="threshold for the distances of fingerprints", d
 
 args = parser.parse_args()
 
-writer = {}
-writer["mode"] = args.wm
-writer["range"] = args.wr
-writer["save_address"] = args.wsa
-writer["time_window"] = args.wt
-writer["asns"] = args.wa
-writer["end"] = args.we
-analyser = {}
-analyser["mode"] = args.am
-analyser["save_address"] = args.asa
-analyser["figure_address"] = args.afa
-analyser["asns"] = args.aa
-analyser["min_anomalies"] = args.ama
-analyser["noise_sd_default"] = args.ans
-analyser["tolerance"] = args.at
-analyser["dist_threshold"] = args.ad
-configs = {}
-configs["writer"] = writer
-configs["analyser"] = analyser
+if clear:
+    writer = {}
+    writer["mode"] = args.wm
+    writer["range"] = args.wr
+    writer["save_address"] = args.wsa
+    writer["time_window"] = args.wt
+    writer["asns"] = args.wa
+    writer["end"] = args.we
+    analyser = {}
+    analyser["mode"] = args.am
+    analyser["save_address"] = args.asa
+    analyser["figure_address"] = args.afa
+    analyser["asns"] = args.aa
+    analyser["min_anomalies"] = args.ama
+    analyser["noise_sd_default"] = args.ans
+    analyser["tolerance"] = args.at
+    analyser["dist_threshold"] = args.ad
+    configs = {}
+    configs["writer"] = writer
+    configs["analyser"] = analyser
+else:
+    with open("config.yml", "r") as ymlfile:
+        configs = yaml.load(ymlfile, Loader=yaml.FullLoader)
+    if args.wm is not None:
+        configs["writer"]["mode"] = args.wm
+    if args.wr is not None:
+        configs["writer"]["range"] = args.wr
+    if args.wsa is not None:
+        configs["writer"]["save_address"] = args.wsa
+    if args.wt is not None:
+        configs["writer"]["time_window"] = args.wt
+    if args.wa is not None:
+        configs["writer"]["asns"] = args.wa
+    if args.we is not None:
+        configs["writer"]["end"] = args.we
+    if args.am is not None:
+        configs["analyser"]["mode"] = args.am
+    if args.asa is not None:
+        configs["analyser"]["save_address"] = args.asa
+    if args.afa is not None:
+        configs["analyser"]["figure_address"] = args.afa
+    if args.aa is not None:
+        configs["analyser"]["asns"] = args.aa
+    if args.ama is not None:
+        configs["analyser"]["min_anomalies"] = args.ama
+    if args.ans is not None:
+        configs["analyser"]["noise_sd_default"] = args.ans
+    if args.at is not None:
+        configs["analyser"]["tolerance"] = args.at
+    if args.ad is not None:
+        configs["analyser"]["dist_threshold"] = args.ad
 
 with open("config.yml", 'w') as ymlfile:
     yaml.dump(configs, ymlfile)

@@ -8,9 +8,9 @@ analyser:
   save_address: ./results/
   tolerance: 5
 writer:
-  asns: null
-  end: null
-  mode: null
+  asns: 13335,12880,35160
+  end: '2019-08-31'
+  mode: D
   range: A2:E5
   save_address: ./data/
   time_window: 14

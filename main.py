@@ -15,9 +15,9 @@ elif cfg['writer']['mode'] == 'D': #Dates
     else:
         asns = [int(x) for x in cfg['writer']['asns'].split(",")]
     # start = cfg['writer']['start']
-    from datetime import timedelta
+    from datetime import timedelta,datetime
     end = cfg['writer']['end']
-    start = str(end - timedelta(days=cfg['writer']['time_window']-1))[:10]
+    start = str(datetime.strptime(end, "%Y-%m-%d") - timedelta(days=cfg['writer']['time_window']-1))[:10]
     params = []
     for asn in asns:
         param = [asn]
