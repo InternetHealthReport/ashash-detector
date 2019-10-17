@@ -16,7 +16,7 @@ with open("config.yml", 'r') as ymlfile:
 
 data_address = cfg['writer']['save_address']
 save_address = cfg['analyser']['save_address']
-fig_address = cfg['analyser']['fig_address']
+fig_address = cfg['analyser']['figure_address']
 noise_sd_default = cfg['analyser']['noise_sd_default']
 tolerance_default = cfg['analyser']['tolerance']
 # save_address = "../data_anomalies_rerun/"

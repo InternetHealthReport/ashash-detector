@@ -3,7 +3,7 @@ analyser:
   dist_threshold: 3
   figure_address: ./results/figures/
   min_anomalies: 0
-  mode: null
+  mode: M
   noise_sd_default: 0.02
   save_address: ./results/
   tolerance: 5
