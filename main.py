@@ -1,9 +1,11 @@
 import yaml
 from src.writer import writeAnomalies, writingWorker
-from src.tools import ThreadPool, validity_check
+from src.tools import ThreadPool, validity_check, clear
 
 with open("config.yml", 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
+
+clear(cfg['writer']['save_address'])
 
 if cfg['writer']['mode']=='L': #List
     print("Writing according to the list")
@@ -26,7 +28,7 @@ elif cfg['writer']['mode'] == 'D': #Dates
     pool = ThreadPool(4)
     pool.map(writingWorker, params)
     pool.wait_completion()
-    validity_check()
+    validity_check(True)
 else:
     pass
 

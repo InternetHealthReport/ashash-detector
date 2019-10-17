@@ -23,13 +23,19 @@ def validity_check(clear=False, clear_target=[]):
     for asn in os.listdir(save_address):
         origin_dir = save_address + asn + "/"
         files = 0
-        for dir in os.listdir(save_address+asn):
+        for dir in os.listdir(origin_dir):
             if os.path.isdir(origin_dir+dir) and len(os.listdir(origin_dir+dir))>0:
                 files += 1
         if files != tw:
+            print(files)
             print("Error found writing AS number %s!" %asn)
             if clear and (len(clear_target)==0 or int(asn) in clear_target):
                 shutil.rmtree(origin_dir)
+                print("Removed " + origin_dir)
+
+def clear(target_dir):
+    shutil.rmtree(target_dir)
+    os.mkdir(target_dir)
 
 def sortDates(original_dates):
     dates = []
