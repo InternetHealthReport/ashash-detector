@@ -178,6 +178,8 @@ class dataWriter(object):
             hege = Hegemony(originasns=self.originasn, start=day + ' 00:00', end=day + ' 23:59')
             for r in hege.get_results():
                 for data in r:
+                    if data['originasn'] == data['asn']:
+                        continue
                     key = str(data['originasn']) + '_' + str(data['asn'])
                     ts = ts2int(data['timebin'])
                     if key in self.hegeDict.keys():
@@ -293,6 +295,7 @@ class dataAnalyser(object):
         dates = sortDates(list(self.alertCounter.keys()))
         for date in dates:
             count = 0
+            _count = 0
             data_address = self.origin_dir + date + "/"
             asns = list(self.baseline_mad.keys())
             sub_anomalies = []
@@ -307,10 +310,50 @@ class dataAnalyser(object):
                 data = np.loadtxt(data_address+file, delimiter="\n", unpack=True)
                 sub_count = sum([1 if (x > self.baseline_median[key]+self.mad_param*self.baseline_mad[key]
                                        or x < self.baseline_median[key]-self.mad_param*self.baseline_mad[key]) else 0 for x in data])
+                _sub_count = int(sum([abs(x-self.baseline_median[key]) if (x > self.baseline_median[key]+self.mad_param*self.baseline_mad[key]
+                                       or x < self.baseline_median[key]-self.mad_param*self.baseline_mad[key]) else 0 for x in data])/self.baseline_mad[key])
                 count += sub_count
+                _count += _sub_count
+
+                #TODO test codes
+                count = _count
+                sub_count = _sub_count
+
                 if sub_count>self.min_anomalies:
                     # self.rw.add(key.split("_")[1] + ": " + str(sub_count))
                     sub_anomalies.append((key.split("_")[1], sub_count))
+
+            #
+            # sub_anomalies = sorted(sub_anomalies, key=lambda x: x[1], reverse=True)
+            # for (a, b) in sub_anomalies:
+            #     self.rw.add(a + ": " + str(b))
+
+
+            if len(asns) > 0:
+                for asn in asns:
+                    print(date)
+                    print(asn)
+                    with open(data_address+asn, mode="w+") as output:
+                        output.write("\n".join(["0"]*96))
+                    key = asn
+                    data = np.loadtxt(data_address + asn, delimiter="\n", unpack=True)
+                    sub_count = sum([1 if (x > self.baseline_median[key] + self.mad_param * self.baseline_mad[key]
+                                           or x < self.baseline_median[key] - self.mad_param * self.baseline_mad[
+                                               key]) else 0 for x in data])
+                    _sub_count = int(sum([abs(x - self.baseline_median[key]) if (
+                                x > self.baseline_median[key] + self.mad_param * self.baseline_mad[key]
+                                or x < self.baseline_median[key] - self.mad_param * self.baseline_mad[key]) else 0 for x
+                                          in data]) / self.baseline_mad[key])
+                    count += sub_count
+                    _count += _sub_count
+
+                    # TODO test codes
+                    count = _count
+                    sub_count = _sub_count
+
+                    if sub_count > self.min_anomalies:
+                        # self.rw.add(key.split("_")[1] + ": " + str(sub_count))
+                        sub_anomalies.append((key.split("_")[1], sub_count))
             sub_anomalies = sorted(sub_anomalies, key=lambda x: x[1], reverse=True)
             for (a, b) in sub_anomalies:
                 self.rw.add(a + ": " + str(b))

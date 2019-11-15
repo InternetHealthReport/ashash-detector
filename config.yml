@@ -8,9 +8,9 @@ analyser:
   save_address: ./results/
   tolerance: 5
 writer:
-  asns: 13335,12880,35160
-  end: '2019-08-31'
-  mode: D
-  range: A2:E5
+  asns: '600,12880,3833,13335,35160,57958'
+  end: '2019-09-30'
+  mode: L
+  range: A2:E25
   save_address: ./data/
   time_window: 14

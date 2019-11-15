@@ -1,6 +1,7 @@
 import yaml
 from src.writer import writeAnomalies, writingWorker
-from src.tools import ThreadPool, validity_check, clear
+from src.tools import ThreadPool, validity_check, clear, recordWriter
+import os
 
 with open("config.yml", 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
@@ -28,7 +29,7 @@ elif cfg['writer']['mode'] == 'D': #Dates
     pool = ThreadPool(4)
     pool.map(writingWorker, params)
     pool.wait_completion()
-    validity_check(True)
+    validity_check(False)
 else:
     pass
 
@@ -40,7 +41,12 @@ elif cfg['analyser']['mode'] == 'L': #LGhash
     print("Analysing using LGhash")
     from src.LGhash import hegemonyPipe, graphMonitor
     asns = cfg['analyser']['asns']
-    for asn in asns:
-        graphMonitor(hegemonyPipe(original_dir=cfg['writer']['save_address'], scope=asn), 1, 1)
+    rw = recordWriter(cfg['analyser']['save_address']+"LGhash_counter")
+    if asns=="all":
+        for asn in os.listdir(cfg['writer']['save_address']):
+            graphMonitor(hegemonyPipe(original_dir=cfg['writer']['save_address'], scope=asn), 1, 1, saverQueue=rw)
+    else:
+        for asn in asns.split(","):
+            graphMonitor(hegemonyPipe(original_dir=cfg['writer']['save_address'], scope=asn), 1, 1, saverQueue=rw)
 else:
     pass

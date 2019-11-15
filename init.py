@@ -7,7 +7,7 @@ clear = False
 parser.add_argument("-c", action='store_true', default=False, dest="clear",
                     help='clear config file')
 
-parser.add_argument("-wm", help="mode for writer list/dates")
+parser.add_argument("-wm", help="mode for wri ter list/dates")
 parser.add_argument("-wr", help="range for list", default="A2:E5")
 parser.add_argument("-wsa", help="save address for writer", default="./data/")
 parser.add_argument("-wt", help="time window for writer", default=14)
