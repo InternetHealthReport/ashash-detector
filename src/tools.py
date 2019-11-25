@@ -9,6 +9,7 @@ from operator import itemgetter
 import re
 import matplotlib.pyplot as plt
 import yaml
+import pandas as pd
 
 with open("config.yml", 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
@@ -119,91 +120,244 @@ class ThreadPool:
         """ Wait for completion of all the tasks in the queue """
         self.tasks.join()
 
-class dataWriter(object):
+# class dataWriter(object):
+#     def __init__(self, originasn, day1, day2, save_address=save_address, labeled=False, labels=[]):
+#         self.hegeDict = {}
+#         self.HegeDict = {}
+#         self.originasn = originasn
+#         self.startdate = day1
+#         self.enddate = day2
+#         self.save_address = save_address
+#         self.labeled = labeled
+#         self.labels = labels
+#         self.daylist = []
+#         self.lost = []
+#         self.mainHege = {}
+#         if not os.path.exists(self.save_address):
+#             os.mkdir(self.save_address)
+#         if not os.path.exists(self.save_address+'/'+str(self.originasn)):
+#             os.mkdir(self.save_address +'/' + str(self.originasn))
+#         else:
+#             self.daylist = os.listdir(self.save_address+'/'+str(self.originasn))
+#         self.save_address = self.save_address + str(self.originasn) + '/'
+#
+#     def main(self, clear):
+#         count = 0
+#         if clear:
+#             self.clear()
+#         if self.labeled:
+#             with open(self.save_address+"labels", "w+") as output:
+#                 output.write("\n".join([str(x) for x in self.labels]))
+#         d1 = datetime.strptime(self.startdate, '%Y-%m-%d')
+#         d2 = datetime.strptime(self.enddate, '%Y-%m-%d')+timedelta(days=1)
+#         while d1 != d2:
+#             count += 96
+#             self.collect(str(d1)[:10])
+#             d1 += timedelta(days=1)
+#
+#         self.fillLost()
+#
+#         for day in self.daylist:
+#             shutil.rmtree(self.save_address+day)
+#         for key in self.HegeDict.keys():
+#             with open(self.save_address+key, mode='w+') as output:
+#                 data = self.HegeDict[key]
+#                 if len(data)<count:
+#                     data.extend(['0']*(count-len(data)))
+#                 output.write('\n'.join(self.HegeDict[key])+'\n')
+#
+#     def collect(self, day):
+#         if os.path.exists(self.save_address+day):
+#             print("Data found: "+str(self.originasn)+" on "+day)
+#             self.daylist.remove(day)
+#             for file in os.listdir(self.save_address+day):
+#                 with open(self.save_address+day+"/"+file, mode="r") as input:
+#                     if file in self.hegeDict.keys():
+#                         self.hegeDict[file].extend([x.strip() for x in input.readlines()])
+#                     else:
+#                         self.hegeDict[file] = [x.strip() for x in input.readlines()]
+#             self.aggregate()
+#         else:
+#             print("Collecting data: "+str(self.originasn)+" on "+day)
+#             save_address = self.save_address+day+'/'
+#             os.mkdir(save_address)
+#             hege = Hegemony(originasns=self.originasn, start=day + ' 00:00', end=day + ' 23:59')
+#             for r in hege.get_results():
+#                 for data in r:
+#                     if data['originasn'] == data['asn']:
+#                         continue
+#                     key = str(data['originasn']) + '_' + str(data['asn'])
+#                     ts = ts2int(data['timebin'])
+#                     if key in self.hegeDict.keys():
+#                         self.hegeDict[key][ts] = str(data['hege'])
+#                     else:
+#                         self.hegeDict[key] = ['0'] * 96
+#                         self.hegeDict[key][ts] = str(data['hege'])
+#             self.mainHege[day] = self.hegeDict
+#             self.aggregate()
+#
+#         # hege = Hegemony(originasns=0, asns=[3356, 174, 1299], start=day + ' 00:00', end=day + ' 23:59')
+#         # globals = []
+#         # for r in hege.get_results():
+#         #     for data in r:
+#         #         globals.append(data['hege'])
+#         # self.lost[day] = [0 if sum(x)>0 else 1 for x in np.array(globals).reshape((-1, 3))]
+#         # print(self.lost[day])
+#
+#
+#             # self.write(save_address)
+#
+#         # if len(os.listdir(self.save_address+day)) == 0:
+#         #     lost = True
+#         #     hege = Hegemony(originasns=0, asns=[3356, 174, 1299], start=day + ' 12:00', end=day + ' 12:00')
+#         #     for r in hege.get_results():
+#         #         if sum(data['hege'] for data in r) > 0:
+#         #             lost = False
+#         #             break
+#         #     if lost:
+#         #         print("LOST: " + day)
+#         #         self.lostdates.append(day)
+#
+#     def write(self, save_address):
+#         for key in self.hegeDict.keys():
+#             # if len(self.hegeDict[key])<96:
+#             #     self.hegeDict[key].extend(['0']*(96-len(self.hegeDict[key])))
+#             with open(save_address+key, mode='w+') as output:
+#                 output.write('\n'.join(self.hegeDict[key]) + '\n')
+#         self.aggregate()
+#
+#     def aggregate(self):
+#         for key in self.hegeDict.keys():
+#             if key in self.HegeDict.keys():
+#                 self.HegeDict[key].extend(self.hegeDict[key])
+#             else:
+#                 self.HegeDict[key] = self.hegeDict[key]
+#         self.hegeDict.clear()
+#
+#     def clear(self):
+#         shutil.rmtree(self.save_address)
+#         os.mkdir(self.save_address)
+#
+#     # def fillLost(self):
+#     #     for date in self.lostdates:
+#     #         for key in self.HegeDict.keys():
+#     #             self.hegeDict[key] = [str(np.median([np.float64(x) for x in self.HegeDict[key]]))]*96
+#     #         save_address = self.save_address + date + '/'
+#     #         self.write(save_address)
+#     def fillLost(self):
+#         for date in self.mainHege.keys():
+#             for key in self.mainHege[date]:
+#                 save_address = self.save_address + date + "/" + key
+#                 with open(save_address, mode="w+") as output:
+#                     output.write('\n'.join(self))
+
+class dataWriter():
     def __init__(self, originasn, day1, day2, save_address=save_address, labeled=False, labels=[]):
-        self.hegeDict = {}
-        self.HegeDict = {}
+
         self.originasn = originasn
         self.startdate = day1
         self.enddate = day2
         self.save_address = save_address
         self.labeled = labeled
         self.labels = labels
-        self.daylist = []
+
         if not os.path.exists(self.save_address):
             os.mkdir(self.save_address)
         if not os.path.exists(self.save_address+'/'+str(self.originasn)):
             os.mkdir(self.save_address +'/' + str(self.originasn))
-        else:
-            self.daylist = os.listdir(self.save_address+'/'+str(self.originasn))
         self.save_address = self.save_address + str(self.originasn) + '/'
+        d1 = datetime.strptime(self.startdate, '%Y-%m-%d')
+        d2 = datetime.strptime(self.enddate, '%Y-%m-%d')
+        self.dates = [str(d1)[:10]]
+        while d1!=d2:
+            d1 += timedelta(days=1)
+            self.dates.append(str(d1)[:10])
+        self.hegeTable = None
+        self.hegeDict = {}
+        self.lostMark = {}
+        for date in self.dates:
+            self.lostMark[date] = [0]*96
 
-    def main(self, clear):
-        count = 0
+    def main(self, clear=True):
         if clear:
             self.clear()
         if self.labeled:
             with open(self.save_address+"labels", "w+") as output:
                 output.write("\n".join([str(x) for x in self.labels]))
-        d1 = datetime.strptime(self.startdate, '%Y-%m-%d')
-        d2 = datetime.strptime(self.enddate, '%Y-%m-%d')+timedelta(days=1)
-        while d1 != d2:
-            count += 96
-            self.collect(str(d1)[:10])
-            d1 += timedelta(days=1)
-        for day in self.daylist:
-            shutil.rmtree(self.save_address+day)
-        for key in self.HegeDict.keys():
-            with open(self.save_address+key, mode='w+') as output:
-                data = self.HegeDict[key]
-                if len(data)<count:
-                    data.extend(['0']*(count-len(data)))
-                output.write('\n'.join(self.HegeDict[key])+'\n')
+        for date in self.dates:
+            self.collect(date)
+        self.fillLost()
+        self.write()
 
-    def collect(self, day):
-        if os.path.exists(self.save_address+day):
-            print("Data found: "+str(self.originasn)+" on "+day)
-            self.daylist.remove(day)
-            for file in os.listdir(self.save_address+day):
-                with open(self.save_address+day+"/"+file, mode="r") as input:
-                    if file in self.hegeDict.keys():
-                        self.hegeDict[file].extend([x.strip() for x in input.readlines()])
-                    else:
-                        self.hegeDict[file] = [x.strip() for x in input.readlines()]
-            self.aggregate()
+    def collect(self, date):
+        print("Collecting data: " + str(self.originasn) + " on " + date)
+        save_address = self.save_address + date + '/'
+        if os.path.exists(save_address):
+            shutil.rmtree(save_address)
+        os.mkdir(save_address)
+        hege = Hegemony(originasns=self.originasn, start=date + ' 00:00', end=date + ' 23:59')
+
+        for r in hege.get_results():
+            for data in r:
+                if data['originasn'] == data['asn']:
+                    continue
+                key = str(data['originasn']) + '_' + str(data['asn'])
+                ts = ts2int(data['timebin'])
+                if key in self.hegeDict.keys():
+                    self.hegeDict[key][ts] = data['hege']
+                else:
+                    self.hegeDict[key] = [0] * 96
+                    self.hegeDict[key][ts] = data['hege']
+        for key in self.hegeDict.keys():
+            self.hegeDict[key] = np.array(self.hegeDict[key])
+        if len(self.hegeDict.keys())==0:
+            data = {date:np.array([0]*96)}
+            data = pd.DataFrame([data], index=["Drop"])
         else:
-            print("Collecting data: "+str(self.originasn)+" on "+day)
-            save_address = self.save_address+day+'/'
-            os.mkdir(self.save_address+day+'/')
-            hege = Hegemony(originasns=self.originasn, start=day + ' 00:00', end=day + ' 23:59')
-            for r in hege.get_results():
-                for data in r:
-                    if data['originasn'] == data['asn']:
-                        continue
-                    key = str(data['originasn']) + '_' + str(data['asn'])
-                    ts = ts2int(data['timebin'])
-                    if key in self.hegeDict.keys():
-                        self.hegeDict[key][ts] = str(data['hege'])
-                    else:
-                        self.hegeDict[key] = ['0'] * 96
-                        self.hegeDict[key][ts] = str(data['hege'])
-            self.write(save_address)
-
-    def write(self, save_address):
-        for key in self.hegeDict.keys():
-            # if len(self.hegeDict[key])<96:
-            #     self.hegeDict[key].extend(['0']*(96-len(self.hegeDict[key])))
-            with open(save_address+key, mode='w+') as output:
-                output.write('\n'.join(self.hegeDict[key]) + '\n')
-        self.aggregate()
-
-    def aggregate(self):
-        for key in self.hegeDict.keys():
-            if key in self.HegeDict.keys():
-                self.HegeDict[key].extend(self.hegeDict[key])
-            else:
-                self.HegeDict[key] = self.hegeDict[key]
+            data = pd.DataFrame([self.hegeDict], index=[date]).T
+        if self.hegeTable is None:
+            self.hegeTable = data
+        else:
+            self.hegeTable = pd.concat([self.hegeTable, data], axis=1, sort=False)
         self.hegeDict.clear()
+
+        hege = Hegemony(originasns=0, asns=[1299, 174, 3356], start=date + ' 00:00', end=date + ' 23:59')
+        for r in hege.get_results():
+            for data in r:
+                ts = ts2int(data['timebin'])
+                self.lostMark[date][ts] += data['hege']
+        self.lostMark[date] = np.array([x!=0 for x in self.lostMark[date]])
+
+    def fillLost(self):
+        for col in self.hegeTable.columns:
+            for row in self.hegeTable.loc[self.hegeTable[col].isnull(), col].index:
+                self.hegeTable.at[row, col] = np.array([0]*96)
+        # self.hegeTable.fillna(np.array([0]*96))
+        if 'Drop' in self.hegeTable.index:
+            self.hegeTable.drop('Drop', inplace=True)
+        # lostnum = 0
+        # for key in self.lostMark.keys():
+        #     lostnum += sum(1 for x in self.lostMark[key] if x)
+        medians = {}
+        for key in self.hegeTable.index:
+            medians[key] = []
+            for date in self.dates:
+                medians[key].extend(list(self.hegeTable.loc[key, date][self.lostMark[date]]))
+            medians[key] = np.median(medians[key])
+        for key in self.hegeTable.index:
+            for date in self.dates:
+                self.hegeTable.at[key, date] = self.hegeTable.loc[key, date] + np.array(np.float64(1)-self.lostMark[date])*medians[key]
+
+    def write(self):
+        for key in self.hegeTable.index:
+            allData = []
+            for date in self.dates:
+                data = [str(x) for x in self.hegeTable.loc[key, date]]
+                allData.extend(data)
+                with open(self.save_address+date+"/"+key, mode="w+") as output:
+                    output.write("\n".join(data))
+            with open(self.save_address+key, mode="w+") as output:
+                output.write("\n".join(allData))
 
     def clear(self):
         shutil.rmtree(self.save_address)
@@ -315,7 +469,7 @@ class dataAnalyser(object):
                 count += sub_count
                 _count += _sub_count
 
-                #TODO test codes
+                # TODO test codes
                 count = _count
                 sub_count = _sub_count
 
@@ -331,8 +485,6 @@ class dataAnalyser(object):
 
             if len(asns) > 0:
                 for asn in asns:
-                    print(date)
-                    print(asn)
                     with open(data_address+asn, mode="w+") as output:
                         output.write("\n".join(["0"]*96))
                     key = asn
