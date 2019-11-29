@@ -12,15 +12,21 @@ from src.tools import sortDates, recordWriter, plot_roc_curve
 from datetime import datetime, timedelta
 from sklearn.metrics import roc_auc_score, roc_curve
 import yaml
+import numpy as np
+import pandas as pd
+import pygsheets
 
 with open("config.yml", 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
 
 anomaly_data = cfg['writer']['save_address']
-counter_file = cfg['analyser']['save_address'] + 'LGhash_counter'
+recorder_file = cfg['analyser']['save_address'] + "LGhash_recorder"
 min_dist = cfg['analyser']['dist_threshold']
+fig_address = cfg['analyser']['figure_address']
+counter_file = cfg['analyser']['save_address'] + "LGhash_counter"
 # anomaly_data = "./data_anomalies_rerun/"
 # counter_file = "./gm_test2"
+
 
 def sketchesSimhash(sketches):
     hashes = {}
@@ -214,23 +220,33 @@ def clean(filename):
         output.write("")
 
 def main(scope):
-    rw = recordWriter("./gm_test")
+    rw = recordWriter(recorder_file)
     hegePipe = hegemonyPipe(original_dir=anomaly_data, scope=scope)
     gm = graphMonitor(hegemonyPipe=hegePipe, N=1, M=1, distThresh=3, minVoteRatio=0, saverQueue=rw)
 
-def drawROC(originasns="all", parameter=None):
+def drawROC(originasns="all", parameter=None, record=False):
     # maxAlerts = 95
+    if record:
+        gs = pygsheets.authorize(service_file='./anomaly_list/AnomalySheets-be83000cb032.json')
+        data = gs.open('AnomalousRoutingEvents')
+        sheet = data.worksheet_by_title('Threshold_LGhash')
     labels = []
     measured = []
     measured_dict = {}
     with open(counter_file, mode="r") as input:
         lines = input.readlines()
-    anomalies = ("".join(lines)).split("\n\n")
+    anomalies = ("".join(lines)).strip().split("\n\n")
+    count = 2
     for anomaly in anomalies:
-        anomaly = anomaly.split("\n")
+        anomaly = anomaly.strip().split("\n")
+        maxAlerts = (len(os.listdir(anomaly_data+anomaly[0][:-2]))-2-(len(anomaly)-1))*48
+        if record:
+            sheet.update_value('A'+str(count), anomaly[0][:-2])
+            sheet.update_value('B'+str(count), maxAlerts)
+            count += 1
         mea_ = [int(x.split(": ")[1]) for x in anomaly[1:]]
         key = anomaly[0][:-2]
-        measured_dict[key] = [x/(max(mea_)+0.01) for x in mea_]
+        measured_dict[key] = [x/maxAlerts for x in mea_]
     for dir in os.listdir(anomaly_data):
         if originasns is not "all" and dir not in originasns:
             continue
@@ -242,28 +258,36 @@ def drawROC(originasns="all", parameter=None):
     draw_label = "N={0}, M={1}--AUC: {2}".format(parameter[0], parameter[1], roc_auc_score(labels, measured))
     # draw_labels.append(draw_label)
     fpr, tpr, thresholds = roc_curve(labels, measured)
-    return fpr, tpr, draw_label
+    i = np.arange(len(tpr))
+    roc = pd.DataFrame({'tf': pd.Series(tpr - (1 - fpr), index=i), 'threshold': pd.Series(thresholds, index=i)})
+    roc_t = roc.ix[(roc.tf - 0).abs().argsort()[:1]]
+    threshold = list(roc_t['threshold'])[0]
+    if record:
+        for i in range(count-2):
+            sheet.update_value('C'+str(i+2), int(sheet.get_value('B'+str(i+2)))*threshold)
+    return fpr, tpr, draw_label, threshold
     # fprs.append(fpr)
     # tprs.append(tpr)
     # plot_roc_curve(fprs, tprs, draw_labels, save_address="./test_generated/ROC_GM")
 
-if __name__ == "__main__":
+def drawROC_extended(originasns=None, parameters = [(1, 1), (5, 2), (2, 5), (5, 5)], record=False):
     draw_labels = []
     fprs = []
     tprs = []
-    originasns = [600, 197426, 13335, 12880, 35160, 29256, 58224, 204317, 3833, 57958]
-    parameters = [(1, 1), (5, 2), (2, 5), (5, 5)]
+    if originasns is None:
+        originasns = [int(x) for x in os.listdir(anomaly_data)]
     # parameters = [3, 5, 7, 10]
     for parameter in parameters:
-        rw = recordWriter("./gm_test")
+        rw = recordWriter(recorder_file)
         for originasn in originasns:
             hegePipe = hegemonyPipe(original_dir=anomaly_data, scope=originasn)
             # hegePipe = hegemonyPipe(original_dir="./data_anomalies/", scope=600)
             # gm = graphMonitor(hegemonyPipe=hegePipe, N=1, M=1, distThresh=parameter, minVoteRatio=0, saverQueue=rw)
             gm = graphMonitor(hegemonyPipe=hegePipe, N=parameter[0], M=parameter[1], distThresh=3, minVoteRatio=0, saverQueue=rw)
-        fpr, tpr, draw_label = drawROC([str(x) for x in originasns], parameter)
+        fpr, tpr, draw_label, threshold = drawROC([str(x) for x in originasns], parameter, len(parameters)==1 and record)
+        print(threshold)
         clean(counter_file)
         draw_labels.append(draw_label)
         fprs.append(fpr)
         tprs.append(tpr)
-    plot_roc_curve(fprs, tprs, draw_labels, save_address="./test_generated/ROC_GM_mn")
+    plot_roc_curve(fprs, tprs, draw_labels, caption='Receiver Operating Characteristic (ROC) Curve with distance threshold={}'.format(min_dist), save_address=fig_address+"ROC_GM_mn")

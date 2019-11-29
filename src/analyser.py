@@ -31,10 +31,12 @@ def analysingWorker(params):
     else:
         dataAnalyser(origin_dir=data_address, originasn=params[0], start=params[1], end=params[2], noise_sd=params[3], tolerance=tolerance_default).main()
 
-def analyzeAnomalies(params=None, plot=True):
+def analyzeAnomalies(params=None, plot=True, noise_sd=None):
     q = []
     pool = ThreadPool(4)
     fig_params = []
+    if noise_sd is not None:
+        noise_sd_default = noise_sd
     if params is None:
         for dir in os.listdir(data_address):
             if os.path.isdir(data_address + dir):
@@ -137,15 +139,20 @@ def plotAnomalies(originasns=[], plotBarGraph=True):
             plt.clf()
             plt.cla()
 
-def drawROC(noises):
-    gamma=7 #TODO
+def drawROC(noises, record=False):
     fprs = []
     tprs = []
     draw_labels = []
+
+    gs = pygsheets.authorize(service_file='./anomaly_list/AnomalySheets-be83000cb032.json')
+    data = gs.open('AnomalousRoutingEvents')
+    sheet = data.worksheet_by_title('Threshold_Madmax')
+
     for noise_sd in noises:
         analyzeAnomalies(plot=False, noise_sd=noise_sd)
         measured = []
         labels = []
+        count = 2
         for dir in os.listdir(data_address):
             sub_address = data_address + dir +"/"
             try:
@@ -159,20 +166,37 @@ def drawROC(noises):
             alerts = [alert.strip().split("\n")[-1] for alert in alerts]
             alerts = [int(alert.split(": ")[1]) for alert in alerts]
             maxAlerts = (len(os.listdir(sub_address))-len(alerts)-2)*48
+            if len(noises) == 1 and record:
+                sheet.update_value('A'+str(count), dir)
+                sheet.update_value('B'+str(count), maxAlerts)
+                count += 1
             # print(str(dir)+": ")
             # print(len(os.listdir(sub_address))-len(alerts)-2)
             # print()
+
             alerts = [alert / maxAlerts for alert in alerts]
+
             measured.extend(alerts)
         draw_label = "NoiseSD={0}_AUC: {1}".format(noise_sd, roc_auc_score(labels, measured))
         draw_labels.append(draw_label)
         fpr, tpr, thresholds = roc_curve(labels, measured)
+
+        i = np.arange(len(tpr))
+        roc = pd.DataFrame({'tf': pd.Series(tpr - (1 - fpr), index=i), 'threshold': pd.Series(thresholds, index=i)})
+        roc_t = roc.ix[(roc.tf - 0).abs().argsort()[:1]]
+        threshold = list(roc_t['threshold'])[0]
+        print("Noise_sd={}, optimal threshold={}".format(noise_sd, threshold))
+
+        if len(noises)==1 and record:
+            for i in range(count-2):
+                sheet.update_value('C'+str(i+2), int(sheet.get_value('B'+str(i+2)))*threshold)
+
         fprs.append(fpr)
         tprs.append(tpr)
     # plot_roc_curve(fprs, tprs, draw_labels, save_address="../test_generated/ROC_3mad")
     plot_roc_curve(fprs, tprs, draw_labels,
-                   caption='Receiver Operating Characteristic (ROC) Curve with $\gamma=$'+str(gamma),
-                   save_address="./results_figure_rerun/ROC_"+str(gamma)+"mad.png")
+                   caption='Receiver Operating Characteristic (ROC) Curve with $\gamma=$'+str(tolerance_default),
+                   save_address=fig_address+"ROC_"+str(tolerance_default)+"mad.png")
 
 def drawSignals(asns="all"):
     for asn in os.listdir(data_address):
